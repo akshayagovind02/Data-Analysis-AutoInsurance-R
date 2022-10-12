@@ -1,0 +1,345 @@
+---
+title: "Data Analysis Project"
+editor_options: 
+  markdown: 
+    wrap: 72
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, 
+                      message = FALSE, 
+                      warning = FALSE,
+                      comment = "")
+```
+
+
+# Introduction
+
+we will be working with a dataset of auto claims filed by
+customers of an automobile insurance company located in the southwest
+and western regions of the United States.
+
+Insurance companies depend on accurate pricing estimates to maintain
+profitability. Auto policies must be priced so that the insurance
+company makes a profit in the long run, given the costs of their
+customers' payouts for accident repairs, total loss car replacements,
+medical fees, and legal fees.
+
+The executives at this insurance company have noticed declining
+profitability over the last several years and have hired you as a data
+science consultant to evaluate their claims data and make
+recommendations on pricing, customer behavior, and car insurance policy
+adjustments.
+
+The objective of this project is to perform an exploratory data analysis
+on the claims_df dataset and produce an executive summary of your key
+insights and recommendations to the executive team at the insurance
+company.
+
+Before you begin, take a moment to read through the following insurance
+company terms to familiarize yourself with the industry: [Auto Insurance
+Terms](https://www.iii.org/article/auto-insurance-jargon-buster "Auto Insurance Terms"){target="_blank"}
+
+## Auto Claims Data
+
+The `claims_df` data frame is loaded below and consists of 6,249 auto
+claims submitted by customers of the insurance company. The rows in this
+data frame represent a single claim with all of the associated features
+that are displayed in the table below.
+
+**Note**: If you have not installed the `tidyverse` package, please do
+so by going to the `Packages` tab in the lower right section of RStudio,
+select the `Install` button and type `tidyverse` into the prompt. If you
+cannot load the data, then try downloading the latest version of R (at
+least 4.0). The `readRDS()` function has different behavior in older
+versions of `R` and may cause loading issues.
+
+```{r}
+library(tidyverse)
+library(skimr)
+library(ggplot2)
+claims_df <- readRDS(url('https://gmubusinessanalytics.netlify.app/data/claims_df.rds'))
+write.csv(claims_df,'auto_claims')
+getwd()
+```
+
+### Raw Data
+
+```{r}
+
+claims_df
+
+```
+
+<br> <br>
+
+# Exploratory Data Analysis
+
+Executives at this company have hired you as a data science consultant
+to evaluate their claims data and make recommendations on pricing,
+customer behavior, and car insurance policy adjustments.
+
+The goal of your analysis is discovering which variables drive
+the differences between customers with large lifetime values and
+customers who cost the company more than they provide in revenue through
+monthly premiums.
+
+
+```{r}
+
+skim(claims_df)
+
+```
+
+```{r}
+# View data frame properties and summary statistics
+skim(claims_df, monthly_premium, customer_lifetime_value)
+```
+
+## Question 1
+
+**Question**: 
+
+Which policy type had the highest customer life time value or which policy has the most profit?
+
+**Answer**:
+
+If we are considering the policy type alone, The corporate Policy made the most profit having the highest customer lifetime value. Though the number of customers belonging to 'personal Category is greater than corporate we can see the average lifetime value (951) is slightly greater for Corporate than customers belonging to Personal (923) policy type
+
+When considering the coverage options with policy, Personal-Basic has the highest number of customers but the customer lifetime value is significantly low for this type. Personal-Premium has the highest profit when we take coverage also into consideration. All the premium plans associated with Policy are giving better profit
+
+```{r}
+claims_df %>% group_by(policy) %>% summarize (avg_monthly_premium = mean(monthly_premium),avg_customer_lifetime_value=mean(customer_lifetime_value),count=n())
+claims_df %>% group_by(policy,coverage) %>% summarize (avg_monthly_premium = mean(monthly_premium),avg_customer_lifetime_value=mean(customer_lifetime_value),count=n())
+
+claims_df_policy_clv <-claims_df %>% group_by(policy) %>% summarize (avg_monthly_premium = mean(monthly_premium),avg_customer_lifetime_value=mean(customer_lifetime_value))
+# Plot the data, same as before
+ggplot(data = claims_df_policy_clv, mapping = aes(x = reorder(policy, avg_customer_lifetime_value), y = avg_customer_lifetime_value),color =policy,fill = policy) + geom_bar(stat = "identity", color = "white") +
+      labs(title = "Average Customer Lifetime Value by Policy",
+           x = "Policy",
+           y = "Average Customer LifeTime Value")
+```
+
+
+## Question 2
+
+**Question**: Compare the policy profits across different regions and determine which region needs to be concentrated to improve revenues. 
+
+**Answer**:
+From table 1 we can see California has the highest number of customers and but not making much profit.The Nevada region has lower customers but still has good customer lifetime value.We can get the best practices or process from this region and shared with other regions. The facet bar graph show low customer life time value for Policy Type Special across all regions. This policy type has less number of customers as well when compared with other policy types.
+
+```{r}
+claims_df %>% group_by(customer_state) %>% summarize (count=n(),avg_monthly_premium = mean(monthly_premium),avg_customer_lifetime_value=mean(customer_lifetime_value),.groups = 'keep')
+claims_df_st_clv <-claims_df %>% group_by(customer_state,policy) %>% summarize (count=n(),avg_monthly_premium = mean(monthly_premium),avg_customer_lifetime_value=mean(customer_lifetime_value),.groups = 'keep')
+claims_df_st_clv
+# Plot the data, same as before
+ggplot(data = claims_df_st_clv, mapping = aes(x = reorder(policy,avg_customer_lifetime_value), y = avg_customer_lifetime_value,fill = policy)) + geom_bar(stat = "identity", color = "white") + 
+       facet_wrap(~customer_state, nrow = 1) + theme(axis.ticks.x = element_blank(), axis.text.x = element_blank())  +
+      labs(title = "Average Customer Lifetime Value by Customer State Faceted by Policy",
+           x = "Customer State",
+           y = "Average Customer LifeTime Value")
+
+```
+
+```{r}
+claims_df_policy_clv
+ggplot(data = claims_df_policy_clv, mapping = aes(x = reorder(policy, avg_customer_lifetime_value), y = avg_customer_lifetime_value)) + geom_bar(stat = "identity", fill = "#006EA1", color = "white") 
+
+```
+
+## Question 3
+
+**Question**:
+
+Which policy has the highest number of claims? 
+
+**Answer**:
+The policy type Personal has the highest number of claims,especially Personal- Basic Coverage type contributing to almost 50% of the total claims. The average customer lifetime value is low for Basic coverage type when compared to Personal - Extended and Basic which has significantly better customer lifetime value.
+
+```{r}
+claims_total <-claims_df %>% group_by(policy,coverage) %>% summarize (count=n(),sum_total_claims = sum(total_claims),sum_tot_claim_amt=sum(total_claims_amount),avg_customer_lifetime_value=mean(customer_lifetime_value))
+claims_total
+# Plot the data, same as before
+ggplot(data = claims_total, mapping = aes(x = reorder(policy, sum_total_claims), y = sum_total_claims)) + geom_bar(stat = "identity", fill = "#006EA1", color = "white") +
+      labs(title = "Average Customer Lifetime Value by Policy",
+           x = "Policy",
+           y = "Average Customer LifeTime Value")
+
+```
+
+## Question 4
+
+**Question**:
+
+Identify customers who many have a negative impact on the profit to the company
+
+**Answer**:
+
+The below table gives the customer details who have highest claims (claimed amount > 95% of the customers) and low customer lifetime value(clv falling below 5% of all the customers)
+
+```{r}
+claims_df %>% filter(total_claims >= quantile(total_claims, 0.95),total_claims_amount >=  quantile(total_claims_amount, 0.95),customer_lifetime_value <=  quantile(customer_lifetime_value, 0.05))
+
+```
+
+## Question 5
+
+**Question**:
+
+Does Residence type impact the profit ?
+
+**Answer**:
+
+Among the three different policy, the number of customers from Residence Type - Rural is minimum and the customer lifetime value is pretty good when compared to the 'Urban' residence type. The 'Urban' residence types have the lowest customer life time value though there are decent number of customers from the Urban residence type.This can be investigated.Most of the companies customers are from the 'Sub-Urban' region and they have a decent lifetime value. So the problem area could be the 'Urban' residence.
+
+```{r}
+claims_df %>% group_by(policy,residence_type) %>% summarize (count = n(),sum_total_claims = sum(total_claims),sum_tot_claim_amt=sum(total_claims_amount),avg_customer_lifetime_value=mean(customer_lifetime_value)) %>% arrange(desc(sum_total_claims))
+
+```
+
+## Question 6
+
+**Question**:
+
+Identify which sales channel has less customer acquisition and can be improved
+
+**Answer**:
+When we take only the different sales channels into consideration we can see the 'Web' sales channel has less number of customer acquisition,but it is not very low . The most number of customer acquisition is by Agents.They make a commission when a customer subscribes to an insurance which is not present in other channels.No wonder they make the highest acquisition.
+
+```{r}
+claims_df %>% count(sales_channel, name = 'number_of_customer_acquisition') %>% 
+  arrange(number_of_customer_acquisition)
+
+claims_df %>% count(policy,sales_channel, name = 'number_of_customer_acquisition') %>% 
+  arrange(number_of_customer_acquisition)
+
+
+```
+
+## Question 7
+
+**Question**:
+
+How the monthly premium are varying for different policy, coverage and vehicle class
+
+**Answer**:
+The table gives the average monthly premium for the different policy,coverage,vehicle class and size combinations.All the Luxury vehicle types having premium coverage have maximum monthly premium with Personal-Premium Luxury Car and SUVS having the highest Monthly premium.Most of the basic coverage policy plans have less than $100 monthly premium. A box plot is made to compare the differentranges of monthly premium available for different plans and vehicle types.Significant outliers can be seen for the SUV and sports car model.
+
+```{r}
+claims_df %>% group_by(policy,coverage,vehicle_size,vehicle_class) %>% summarise(max_monthly_premium=max(monthly_premium),count=n(),.groups = 'keep')  %>% 
+  arrange(desc(max_monthly_premium))
+
+premium_range <- claims_df %>% group_by(policy,coverage,vehicle_size,vehicle_class) %>% summarise(avg_monthly_premium=median(monthly_premium),count=n(),.groups = 'keep') 
+
+
+```
+
+```{r}
+ggplot(claims_df %>% select(policy,coverage,vehicle_size,vehicle_class,monthly_premium), aes(vehicle_size, monthly_premium, colour=vehicle_class)) +
+   geom_boxplot(width=0.7) +
+      labs(title = "Monthly Premium for Different Vehicle class and Size",
+           x = "Vehicle size",
+           y = "Monthly Premium")
+
+ggplot(claims_df %>% select(policy,coverage,vehicle_size,vehicle_class,monthly_premium), aes(vehicle_size, monthly_premium, colour=vehicle_class)) +
+   geom_boxplot(width=0.7) + facet_grid(.~policy, scale = "free_y") +
+      labs(title = "Monthly Premium for Different Vehicle class and Size Faceted by Policy",
+           x = "Vehicle size",
+           y = "Monthly Premium")
+
+ggplot(claims_df %>% select(policy,coverage,vehicle_size,vehicle_class,monthly_premium), aes(vehicle_size, monthly_premium, colour=vehicle_class)) +
+   geom_boxplot(width=0.7) + facet_grid(coverage~policy, scale = "free_y") +
+      labs(title = "Monthly Premium for Different Vehicle class and Size Faceted by Policy and Coverage",
+           x = "Vehicle size",
+           y = "Monthly Premium")
+
+
+```
+## Question 8
+
+**Question**:
+
+Does the employment status / gender has any significance in the profits
+or number of customer acquisition
+
+**Answer**:
+From the employments status , the customers who are employed more auto insurance subscription but they have the lowest customer lifetime value. Customer having Disabled or retired Employment status have better customer lifetime value.
+On comparing different genders, the number subscribed to auto insurance are almost the same but customers belonging to Female Gender have significantly better customer lifetime value.
+The pie chart shows the comparison between the number of customers belonging to different employment status and genders which shows a significant difference among each categories
+
+```{r} 
+
+claims_df %>% group_by(employment_status) %>%
+summarize (count=n(),sum_total_claims =
+sum(total_claims),sum_total_claim_amt =
+sum(total_claims_amount),avg_customer_lifetime_value=round(mean(customer_lifetime_value),2),.groups
+= 'keep')
+
+claims_df %>% group_by(gender) %>%
+summarize (count=n(),sum_total_claims =
+sum(total_claims),sum_total_claim_amt =
+sum(total_claims_amount),avg_customer_lifetime_value=round(mean(customer_lifetime_value),2),.groups
+= 'keep')
+
+claims_df %>% group_by(policy,employment_status,gender) %>%
+summarize (count=n(),sum_total_claims =
+sum(total_claims),sum_total_claim_amt =
+sum(total_claims_amount),avg_customer_lifetime_value=round(mean(customer_lifetime_value),2),.groups
+= 'keep')
+
+claims_empstatus <- claims_df %>% group_by(policy,employment_status) %>% summarize (count=n(),sum_total_claims =
+sum(total_claims),sum_total_claim_amt = sum(total_claims_amount),avg_customer_lifetime_value=round(mean(customer_lifetime_value),2),.groups
+= 'keep') 
+claims_empstatus$policy <- factor(claims_empstatus$policy)
+claims_empstatus$employment_status <- factor(claims_empstatus$employment_status)
+
+claims_empstatus
+
+ggplot(claims_empstatus, aes(x = "", y = count,
+color = employment_status, fill = employment_status)) + geom_bar(width =
+1, stat ="identity") + coord_polar("y",start=0) + facet_grid(.~ policy) + labs(title = "Number of Customers in Different Employment Status by Policy")
+
+claims_gen <-claims_df %>% group_by(employment_status,gender) %>% summarize (count=n(),sum_total_claims = sum(total_claims),sum_total_claim_amt = sum(total_claims_amount),avg_customer_lifetime_value=round(mean(customer_lifetime_value),2),.groups
+= 'keep') 
+claims_gen$employment_status <- factor(claims_gen$employment_status)
+claims_gen$gender <- factor(claims_gen$gender)
+
+ggplot(claims_gen, aes(x = "", y = count, color =
+gender, fill = gender)) + geom_bar(width = 1, stat ="identity") +
+coord_polar("y") + facet_grid(.~ employment_status) +
+      labs(title = "Number of Customers in Different Employment Status by Gender")
+
+```
+## Question 9
+
+**Question**:
+
+What income group most of the policy customers come under
+
+**Answer**:
+
+The min and max income for customer are almost same for all the three policy types. To get the income range in which most of the customer fall we can do a box plot. From the first box plot we can see more than 600 customers fall in the 20k to 25k bin and 500+ customers fall in the salary range 25 to 30K. The facet graph gives the income range for different policy types.
+
+The number 
+```{r} 
+claims_df %>% group_by(policy) %>% summarize(min_income = min(income),max_income = max(income))
+ggplot(claims_df,aes(x=income)) + geom_histogram(bins=20) + labs(title = "Income Distribution of Customers")
+ggplot(claims_df,aes(x=income)) + geom_histogram(bins=20) + facet_grid(.~policy) + labs(title = "Income Distribution of Customers for different policies")
+```
+# Summary of Results
+
+Any company strives to serve the customers effectively and work to maintain its profits.Auto insurance companies make policies that take monthly premium for insured vehicle from customers and payout the  customers for any damage or replacement in case an accident or misfortune happens.This particular insurance company is seeing a decline in its profits and I, as a Data Scientist is tasked with the responsibility of checking how the company is performing and the areas they can concentrate concentrate to improve their profits. I am trying to point out which types of policy,coverage,employment status and the states are performing well and the different performing areas that need improvement.
+
+The important findings from my analysis and their importance for business are summarized below.
+The personal-basic plan in-spite of having more customers enrolled has low customer lifetime value compared to other coverage types.The policy Personal with Premium Coverage is getting us the highest profit.
+California has the highest number of customers and but not making much profit.The Nevada region has lower customers but still has good customer lifetime value.
+The different sales channel are performing equally well with 'Web' sales channel has slightly less of customer acquisition. 
+From the employments status , the customers who are employed have more auto insurance subscription but they have the lowest customer lifetime value. Customer having Disabled or retired Employment status have better customer lifetime value.
+The min and max income for customer are almost same for all the three policy types with most of the customers falling into the 20 ~ 30k bracket. 
+On comparing different genders, the number subscribed to auto insurance are almost the same but customers belonging to Female Gender have significantly better customer lifetime value.
+
+The policy Personal with Premium Coverage is getting us the highest profit, we can run some promotion so we can move the customers in Personal- Basic to Personal-Extended/Premium as Personal basic has a huge customer base and their lifetime value is low. The company will have customers in the higher premium plan eventually and this can significantly improve the companies profit
+Among the regions we can see Nevada having good profits than the regions with high customer base. This could attribute to the quality fo customers. We can have a preliminary check to evaluate the background and options and be little choosy with the customers as they are with us. This will help company have less defaulters and prevent misuse/fraud in the long run.
+The residence type Urban has less customers and lifetime value compared to other residence types. We can task the sales channel to target more customers in Urban areas and expand our business.
+The number subscribed to auto insurance are almost the same but customers belonging to Female Gender have significantly better customer lifetime value.The company can set up an incentive scheme encouraging safe driving for their customers and auto-pay monthly premium options . The first can instigate some responsibility and can reduce the number of claims and the second can encourage premium payment without delay or defaulting.
+        
